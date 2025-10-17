@@ -1,6 +1,7 @@
 import bcrypt from 'bcrypt';
 import { OrganizationModel, UserModel } from '../models/User';
 import { AvailabilityModel, IAvailability, IDaySchedule } from '../models/Availability';
+import { PropertyModel, IProperty, SaleType, PropertyStatus, PaymentPlanType } from '../models/Property';
 import { JWTUtils } from '../utils/jwt';
 import { OtpUtils } from '../utils/otp';
 import { EmailUtils } from '../utils/email';
@@ -292,6 +293,207 @@ export class AuthService {
     }
 
     return timeSlots;
+  }
+
+  // Property management methods
+  static async createProperty(data: {
+    organizationId: string;
+    title: string;
+    development_name: string;
+    property_code: string;
+    floor?: string;
+    available_units: number;
+    sale_type: SaleType;
+    price: number;
+    area?: number;
+    bedrooms: number;
+    bathrooms: number;
+    garage: number;
+    kitchen: number;
+    location: {
+      address: string;
+      city: string;
+      state: string;
+      country: string;
+      latitude?: number;
+      longitude?: number;
+    };
+    description: string;
+    images?: string[];
+    payment_plans?: Array<{
+      type: PaymentPlanType;
+      name: string;
+      description?: string;
+      schedule: {
+        deposit_amount?: number;
+        monthly_payment?: number;
+        duration_months?: number;
+        interest_rate?: number;
+        total_amount?: number;
+      };
+      is_active?: boolean;
+    }>;
+    status?: PropertyStatus;
+  }) {
+    // Set default values for optional fields
+    const propertyData: Parameters<typeof PropertyModel.create>[0] = {
+      organizationId: data.organizationId,
+      title: data.title,
+      development_name: data.development_name,
+      property_code: data.property_code,
+      floor: data.floor,
+      available_units: data.available_units,
+      sale_type: data.sale_type,
+      price: data.price,
+      area: data.area,
+      bedrooms: data.bedrooms,
+      bathrooms: data.bathrooms,
+      garage: data.garage,
+      kitchen: data.kitchen,
+      location: data.location,
+      description: data.description,
+      images: data.images || [],
+      payment_plans: data.payment_plans?.map(plan => ({
+        type: plan.type,
+        name: plan.name,
+        description: plan.description,
+        schedule: plan.schedule,
+        is_active: plan.is_active !== false,
+        created_at: new Date()
+      })) || [],
+      status: data.status || 'Available'
+    };
+
+    const property = await PropertyModel.create(propertyData);
+    return property;
+  }
+
+  static async getOrganizationProperties(organizationId: string) {
+    return await PropertyModel.findByOrganization(organizationId);
+  }
+
+  static async getAvailableProperties(organizationId: string) {
+    return await PropertyModel.findAvailableByOrganization(organizationId);
+  }
+
+  static async getPropertyById(propertyId: string, organizationId: string) {
+    const property = await PropertyModel.findByIdAndOrganization(propertyId, organizationId);
+    if (!property) {
+      throw new Error('Property not found');
+    }
+    return property;
+  }
+
+  static async updateProperty(propertyId: string, organizationId: string, updateData: any): Promise<IProperty> {
+    const property = await PropertyModel.findByIdAndOrganization(propertyId, organizationId);
+    if (!property) {
+      throw new Error('Property not found');
+    }
+
+    const updatedProperty = await PropertyModel.updateById(propertyId, updateData);
+    if (!updatedProperty) {
+      throw new Error('Failed to update property');
+    }
+    return updatedProperty;
+  }
+
+  static async deleteProperty(propertyId: string, organizationId: string) {
+    const property = await PropertyModel.findByIdAndOrganization(propertyId, organizationId);
+    if (!property) {
+      throw new Error('Property not found');
+    }
+
+    await PropertyModel.deleteById(propertyId);
+    return { success: true, message: 'Property deleted successfully' };
+  }
+
+  static async searchProperties(filters: {
+    organizationId?: string;
+    city?: string;
+    state?: string;
+    sale_type?: SaleType;
+    minPrice?: number;
+    maxPrice?: number;
+    bedrooms?: number;
+    status?: PropertyStatus;
+  }) {
+    return await PropertyModel.searchProperties(filters);
+  }
+
+  // Payment plan management methods
+  static async addPaymentPlan(propertyId: string, organizationId: string, paymentPlan: {
+    type: PaymentPlanType;
+    name: string;
+    description?: string;
+    schedule: {
+      deposit_amount?: number;
+      monthly_payment?: number;
+      duration_months?: number;
+      interest_rate?: number;
+      total_amount?: number;
+    };
+    is_active?: boolean;
+  }) {
+    const property = await PropertyModel.findByIdAndOrganization(propertyId, organizationId);
+    if (!property) {
+      throw new Error('Property not found');
+    }
+
+    const newPaymentPlan = {
+      type: paymentPlan.type,
+      name: paymentPlan.name,
+      description: paymentPlan.description,
+      schedule: paymentPlan.schedule,
+      is_active: paymentPlan.is_active !== false,
+      created_at: new Date()
+    };
+
+    property.payment_plans.push(newPaymentPlan as any);
+    await property.save();
+    return property;
+  }
+
+  static async updatePaymentPlan(propertyId: string, organizationId: string, planIndex: number, updates: Partial<{
+    type: PaymentPlanType;
+    name: string;
+    description: string;
+    schedule: {
+      deposit_amount?: number;
+      monthly_payment?: number;
+      duration_months?: number;
+      interest_rate?: number;
+      total_amount?: number;
+    };
+    is_active: boolean;
+  }>) {
+    const property = await PropertyModel.findByIdAndOrganization(propertyId, organizationId);
+    if (!property) {
+      throw new Error('Property not found');
+    }
+
+    if (planIndex < 0 || planIndex >= property.payment_plans.length) {
+      throw new Error('Payment plan not found');
+    }
+
+    // Update the payment plan
+    Object.assign(property.payment_plans[planIndex], updates);
+    await property.save();
+    return property;
+  }
+
+  static async removePaymentPlan(propertyId: string, organizationId: string, planIndex: number) {
+    const property = await PropertyModel.findByIdAndOrganization(propertyId, organizationId);
+    if (!property) {
+      throw new Error('Property not found');
+    }
+
+    if (planIndex < 0 || planIndex >= property.payment_plans.length) {
+      throw new Error('Payment plan not found');
+    }
+
+    property.payment_plans.splice(planIndex, 1);
+    await property.save();
+    return property;
   }
 
   // Helper methods for time calculations

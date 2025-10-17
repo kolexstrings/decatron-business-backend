@@ -6,6 +6,7 @@ import swaggerUi from 'swagger-ui-express';
 import { connectDB } from './utils/db';
 import authRoutes from './routes/auth';
 import availabilityRoutes from './routes/availability';
+import propertyRoutes from './routes/properties';
 
 dotenv.config();
 
@@ -68,6 +69,9 @@ app.use('/auth', authRoutes);
 
 // Availability routes
 app.use('/availability', availabilityRoutes);
+
+// Property routes
+app.use('/properties', propertyRoutes);
 
 // Protected route example
 app.get('/protected', (req: Request, res: Response) => {
