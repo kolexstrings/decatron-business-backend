@@ -7,6 +7,7 @@ export interface JWTPayload {
   email: string;
   role: 'organization' | 'admin' | 'agent' | 'staff';
   organizationId?: string;
+  type?: string;
 }
 
 export const JWTUtils = {

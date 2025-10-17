@@ -1,130 +1,615 @@
-import { Router, Request, Response } from 'express';
-import bcrypt from 'bcrypt';
-import { OrganizationModel, UserModel } from '../models/User';
-import { JWTUtils } from '../utils/jwt';
-import { AuthRequest } from '../middleware/auth';
+import { Router } from 'express';
+import { AuthController } from '../controllers/authController';
+import { authenticateToken, requireRole } from '../middleware/auth';
+
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     Organization:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: string
+ *         name:
+ *           type: string
+ *         email:
+ *           type: string
+ *         phoneNumber:
+ *           type: string
+ *         size:
+ *           type: string
+ *           enum: [1-10, 11-50, 51-200, 200+]
+ *         category:
+ *           type: string
+ *           enum: [Property Development, Property Management]
+ *     User:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: string
+ *         username:
+ *           type: string
+ *         email:
+ *           type: string
+ *         role:
+ *           type: string
+ *           enum: [admin, agent, staff]
+ *     Error:
+ *       type: object
+ *       properties:
+ *         error:
+ *           type: string
+ */
 
 const router = Router();
 
-// Organization registration
-router.post('/register-organization', async (req: Request, res: Response) => {
-  try {
-    const { name, email, password, phoneNumber, size, category } = req.body;
+/**
+ * @swagger
+ * /auth/send-otp:
+ *   post:
+ *     summary: Send OTP for email verification
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - purpose
+ *             properties:
+ *               email:
+ *                 type: string
+ *               purpose:
+ *                 type: string
+ *                 enum: [registration, invite]
+ *     responses:
+ *       200:
+ *         description: OTP sent successfully
+ *       400:
+ *         description: Invalid input
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.post('/send-otp', AuthController.sendOtp);
 
-    if (!name || !email || !password || !size || !category) {
-      return res.status(400).json({ error: 'Name, email, password, size, and category are required' });
-    }
+/**
+ * @swagger
+ * /auth/verify-otp:
+ *   post:
+ *     summary: Verify OTP
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - otp
+ *               - purpose
+ *             properties:
+ *               email:
+ *                 type: string
+ *               otp:
+ *                 type: string
+ *               purpose:
+ *                 type: string
+ *                 enum: [registration, invite]
+ *     responses:
+ *       200:
+ *         description: OTP verified successfully
+ *       400:
+ *         description: Invalid or expired OTP
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.post('/verify-otp', AuthController.verifyOtp);
 
-    const existingOrg = await OrganizationModel.findByEmail(email);
-    if (existingOrg) {
-      return res.status(409).json({ error: 'Organization with this email already exists' });
-    }
+/**
+ * @swagger
+ * /auth/register-organization:
+ *   post:
+ *     summary: Register a new organization
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - email
+ *               - password
+ *               - size
+ *               - category
+ *             properties:
+ *               name:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *               phoneNumber:
+ *                 type: string
+ *               size:
+ *                 type: string
+ *                 enum: [1-10, 11-50, 51-200, 200+]
+ *               category:
+ *                 type: string
+ *                 enum: [Property Development, Property Management]
+ *     responses:
+ *       201:
+ *         description: Organization registered successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 token:
+ *                   type: string
+ *                 organization:
+ *                   $ref: '#/components/schemas/Organization'
+ *       400:
+ *         description: Invalid input
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       409:
+ *         description: Organization already exists
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.post('/register-organization', AuthController.registerOrganization);
 
-    const organization = await OrganizationModel.create({ name, email, password, phoneNumber, size, category });
-    const token = JWTUtils.sign({ userId: organization.id, email: organization.email, role: 'organization', organizationId: organization.id });
+/**
+ * @swagger
+ * /auth/login-organization:
+ *   post:
+ *     summary: Login organization
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - password
+ *             properties:
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Login successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 token:
+ *                   type: string
+ *                 organization:
+ *                   $ref: '#/components/schemas/Organization'
+ *       401:
+ *         description: Invalid credentials
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.post('/login-organization', AuthController.loginOrganization);
 
-    res.status(201).json({ message: 'Organization registered successfully', token, organization: { id: organization.id, name: organization.name, email: organization.email, phoneNumber: organization.phoneNumber, size: organization.size, category: organization.category } });
-  } catch (error) {
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
+/**
+ * @swagger
+ * /auth/add-user:
+ *   post:
+ *     summary: Add a sub-user to organization
+ *     tags: [Users]
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - username
+ *               - email
+ *               - password
+ *               - role
+ *             properties:
+ *               username:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *               role:
+ *                 type: string
+ *                 enum: [admin, agent, staff]
+ *     responses:
+ *       201:
+ *         description: User added successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
+ *       400:
+ *         description: Invalid input
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       403:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       409:
+ *         description: User already exists
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.post('/add-user', authenticateToken, requireRole(['organization']), AuthController.addUser);
 
-// Organization login
-router.post('/login-organization', async (req: Request, res: Response) => {
-  try {
-    const { email, password } = req.body;
+/**
+ * @swagger
+ * /auth/users:
+ *   get:
+ *     summary: Get all users in organization
+ *     tags: [Users]
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of users
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 users:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/User'
+ *       403:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.get('/users', authenticateToken, requireRole(['organization']), AuthController.getUsers);
 
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required' });
-    }
+/**
+ * @swagger
+ * /auth/login-user:
+ *   post:
+ *     summary: Login sub-user
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - password
+ *             properties:
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Login successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 token:
+ *                   type: string
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
+ *       401:
+ *         description: Invalid credentials
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.post('/login-user', AuthController.loginUser);
 
-    const organization = await OrganizationModel.findByEmail(email);
-    if (!organization) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
+/**
+ * @swagger
+ * /auth/update-user-profile:
+ *   put:
+ *     summary: Update user profile
+ *     tags: [Users]
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               profile:
+ *                 type: object
+ *                 properties:
+ *                   firstName:
+ *                     type: string
+ *                   lastName:
+ *                     type: string
+ *                   bio:
+ *                     type: string
+ *                   skills:
+ *                     type: array
+ *                     items:
+ *                       type: string
+ *                   avatar:
+ *                     type: string
+ *                   phone:
+ *                     type: string
+ *                   location:
+ *                     type: string
+ *                   experience:
+ *                     type: number
+ *     responses:
+ *       200:
+ *         description: Profile updated successfully
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: User not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.put('/update-user-profile', authenticateToken, AuthController.updateUserProfile);
 
-    const isPasswordValid = await bcrypt.compare(password, organization.password);
-    if (!isPasswordValid) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
+/**
+ * @swagger
+ * /auth/update-organization-profile:
+ *   put:
+ *     summary: Update organization profile
+ *     tags: [Organizations]
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               profile:
+ *                 type: object
+ *                 properties:
+ *                   fullAddress:
+ *                     type: object
+ *                     properties:
+ *                       street:
+ *                         type: string
+ *                       city:
+ *                         type: string
+ *                       state:
+ *                         type: string
+ *                       zip:
+ *                         type: string
+ *                       country:
+ *                         type: string
+ *                   website:
+ *                     type: string
+ *                   description:
+ *                     type: string
+ *                   logo:
+ *                     type: string
+ *                   foundedYear:
+ *                     type: number
+ *                   specialties:
+ *                     type: array
+ *                     items:
+ *                       type: string
+ *     responses:
+ *       200:
+ *         description: Profile updated successfully
+ *       403:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Organization not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.put('/update-organization-profile', authenticateToken, requireRole(['organization']), AuthController.updateOrganizationProfile);
 
-    const token = JWTUtils.sign({ userId: organization.id, email: organization.email, role: 'organization', organizationId: organization.id });
+/**
+ * @swagger
+ * /auth/generate-invite:
+ *   post:
+ *     summary: Generate invite link for a user
+ *     tags: [Invites]
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - role
+ *             properties:
+ *               email:
+ *                 type: string
+ *               role:
+ *                 type: string
+ *                 enum: [admin, agent, staff]
+ *               sendEmail:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Invite link generated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 inviteLink:
+ *                   type: string
+ *       400:
+ *         description: Invalid input
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       403:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       409:
+ *         description: User already exists
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.post('/generate-invite', authenticateToken, requireRole(['organization']), AuthController.generateInvite);
 
-    res.json({ message: 'Login successful', token, organization: { id: organization.id, name: organization.name, email: organization.email } });
-  } catch (error) {
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
+/**
+ * @swagger
+ * /auth/validate-invite/{token}:
+ *   get:
+ *     summary: Validate invite link
+ *     tags: [Invites]
+ *     parameters:
+ *       - in: path
+ *         name: token
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Valid invite link
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 valid:
+ *                   type: boolean
+ *                 email:
+ *                   type: string
+ *                 organizationId:
+ *                   type: string
+ *                 role:
+ *                   type: string
+ *       400:
+ *         description: Invalid or expired invite link
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.get('/validate-invite/:token', AuthController.validateInvite);
 
-// Add sub-user (staff or agent) - only organization can do this
-router.post('/add-user', async (req: AuthRequest, res: Response) => {
-  try {
-    if (!req.user || req.user.role !== 'organization') {
-      return res.status(403).json({ error: 'Only organizations can add users' });
-    }
-
-    const { username, email, password, role } = req.body;
-
-    if (!username || !email || !password || !role) {
-      return res.status(400).json({ error: 'Username, email, password, and role are required' });
-    }
-
-    if (!['staff', 'agent'].includes(role)) {
-      return res.status(400).json({ error: 'Role must be staff or agent' });
-    }
-
-    const existingUser = await UserModel.findByEmail(email);
-    if (existingUser) {
-      return res.status(409).json({ error: 'User with this email already exists' });
-    }
-
-    const user = await UserModel.create({ username, email, password, role, organizationId: req.user.organizationId! });
-
-    res.status(201).json({ message: 'User added successfully', user: { id: user.id, username: user.username, email: user.email, role: user.role } });
-  } catch (error) {
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Get all users for an organization
-router.get('/users', async (req: AuthRequest, res: Response) => {
-  try {
-    if (!req.user || req.user.role !== 'organization') {
-      return res.status(403).json({ error: 'Only organizations can view users' });
-    }
-
-    const users = await UserModel.findByOrganizationId(req.user.organizationId!);
-    res.json({ users });
-  } catch (error) {
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Sub-user login
-router.post('/login-user', async (req: Request, res: Response) => {
-  try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required' });
-    }
-
-    const user = await UserModel.findByEmail(email);
-    if (!user) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
-
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
-
-    const token = JWTUtils.sign({ userId: user.id, email: user.email, role: user.role, organizationId: user.organizationId });
-
-    res.json({ message: 'Login successful', token, user: { id: user.id, username: user.username, email: user.email, role: user.role } });
-  } catch (error) {
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
+/**
+ * @swagger
+ * /auth/register-user:
+ *   post:
+ *     summary: Register user via invite link
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - token
+ *               - username
+ *               - password
+ *             properties:
+ *               token:
+ *                 type: string
+ *               username:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: User registered successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
+ *       400:
+ *         description: Invalid or expired invite link
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       409:
+ *         description: User already exists
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.post('/register-user', AuthController.registerUser);
 
 export default router;
