@@ -9,10 +9,10 @@ const router = Router();
 // Organization registration
 router.post('/register-organization', async (req: Request, res: Response) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, phoneNumber, size, category } = req.body;
 
-    if (!name || !email || !password) {
-      return res.status(400).json({ error: 'Name, email, and password are required' });
+    if (!name || !email || !password || !size || !category) {
+      return res.status(400).json({ error: 'Name, email, password, size, and category are required' });
     }
 
     const existingOrg = await OrganizationModel.findByEmail(email);
@@ -20,10 +20,10 @@ router.post('/register-organization', async (req: Request, res: Response) => {
       return res.status(409).json({ error: 'Organization with this email already exists' });
     }
 
-    const organization = await OrganizationModel.create({ name, email, password });
+    const organization = await OrganizationModel.create({ name, email, password, phoneNumber, size, category });
     const token = JWTUtils.sign({ userId: organization.id, email: organization.email, role: 'organization', organizationId: organization.id });
 
-    res.status(201).json({ message: 'Organization registered successfully', token, organization: { id: organization.id, name: organization.name, email: organization.email } });
+    res.status(201).json({ message: 'Organization registered successfully', token, organization: { id: organization.id, name: organization.name, email: organization.email, phoneNumber: organization.phoneNumber, size: organization.size, category: organization.category } });
   } catch (error) {
     res.status(500).json({ error: 'Internal server error' });
   }

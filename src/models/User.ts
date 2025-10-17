@@ -5,7 +5,7 @@ export interface IUser extends Document {
   username: string;
   email: string;
   password: string;
-  role: 'staff' | 'agent';
+  role: 'admin' | 'agent' | 'staff';
   organizationId: mongoose.Types.ObjectId;
   createdAt: Date;
 }
@@ -14,6 +14,9 @@ export interface IOrganization extends Document {
   name: string;
   email: string;
   password: string;
+  phoneNumber?: string;
+  size: '1-10' | '11-50' | '51-200' | '200+';
+  category: 'Property Development' | 'Property Management';
   users: IUser[];
   createdAt: Date;
 }
@@ -22,7 +25,7 @@ const UserSchema: Schema = new Schema({
   username: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  role: { type: String, enum: ['staff', 'agent'], required: true },
+  role: { type: String, enum: ['admin', 'agent', 'staff'], required: true },
   organizationId: { type: Schema.Types.ObjectId, ref: 'Organization', required: true },
   createdAt: { type: Date, default: Date.now },
 });
@@ -31,6 +34,9 @@ const OrganizationSchema: Schema = new Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
+  phoneNumber: { type: String },
+  size: { type: String, enum: ['1-10', '11-50', '51-200', '200+'], required: true },
+  category: { type: String, enum: ['Property Development', 'Property Management'], required: true },
   createdAt: { type: Date, default: Date.now },
 });
 

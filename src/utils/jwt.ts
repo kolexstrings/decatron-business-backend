@@ -5,7 +5,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'; // Use a secure 
 export interface JWTPayload {
   userId: string;
   email: string;
-  role: 'organization' | 'staff' | 'agent';
+  role: 'organization' | 'admin' | 'agent' | 'staff';
   organizationId?: string;
 }
 
