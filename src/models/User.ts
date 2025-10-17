@@ -1,11 +1,11 @@
-import mongoose, { Schema, Document } from "mongoose";
-import bcrypt from "bcrypt";
+import mongoose, { Schema, Document } from 'mongoose';
+import bcrypt from 'bcrypt';
 
 export interface IUser extends Document {
   username: string;
   email: string;
   password: string;
-  role: "admin" | "agent" | "staff";
+  role: 'admin' | 'agent' | 'staff';
   organizationId: string;
   profile?: {
     firstName?: string;
@@ -25,8 +25,8 @@ export interface IOrganization extends Document {
   email: string;
   password: string;
   phoneNumber?: string;
-  size: "1-10" | "11-50" | "51-200" | "200+";
-  category: "Property Development" | "Property Management";
+  size: '1-10' | '11-50' | '51-200' | '200+';
+  category: 'Property Development' | 'Property Management';
   profile?: {
     fullAddress?: {
       street?: string;
@@ -49,8 +49,8 @@ const UserSchema: Schema = new Schema({
   username: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  role: { type: String, enum: ["admin", "agent", "staff"], required: true },
-  organizationId: { type: String, ref: "Organization", required: true },
+  role: { type: String, enum: ['admin', 'agent', 'staff'], required: true },
+  organizationId: { type: String, ref: 'Organization', required: true },
   profile: {
     firstName: { type: String },
     lastName: { type: String },
@@ -71,12 +71,12 @@ const OrganizationSchema: Schema = new Schema({
   phoneNumber: { type: String },
   size: {
     type: String,
-    enum: ["1-10", "11-50", "51-200", "200+"],
+    enum: ['1-10', '11-50', '51-200', '200+'],
     required: true,
   },
   category: {
     type: String,
-    enum: ["Property Development", "Property Management"],
+    enum: ['Property Development', 'Property Management'],
     required: true,
   },
   profile: {
@@ -97,29 +97,26 @@ const OrganizationSchema: Schema = new Schema({
 });
 
 // Hash password before saving
-UserSchema.pre<IUser>("save", async function (next) {
-  if (this.isModified("password")) {
+UserSchema.pre<IUser>('save', async function (next) {
+  if (this.isModified('password')) {
     this.password = await bcrypt.hash(this.password, 10);
   }
   next();
 });
 
-OrganizationSchema.pre<IOrganization>("save", async function (next) {
-  if (this.isModified("password")) {
+OrganizationSchema.pre<IOrganization>('save', async function (next) {
+  if (this.isModified('password')) {
     this.password = await bcrypt.hash(this.password, 10);
   }
   next();
 });
 
-export const User = mongoose.model<IUser>("User", UserSchema);
-export const Organization = mongoose.model<IOrganization>(
-  "Organization",
-  OrganizationSchema
-);
+export const User = mongoose.model<IUser>('User', UserSchema);
+export const Organization = mongoose.model<IOrganization>('Organization', OrganizationSchema);
 
 export const OrganizationModel = {
   async create(
-    orgData: Omit<IOrganization, keyof Document | "users" | "createdAt">
+    orgData: Omit<IOrganization, keyof Document | 'users' | 'createdAt'>
   ): Promise<IOrganization> {
     const organization = new Organization(orgData);
     return await organization.save();
@@ -139,7 +136,7 @@ export const UserModel = {
     username: string;
     email: string;
     password: string;
-    role: "admin" | "agent" | "staff";
+    role: 'admin' | 'agent' | 'staff';
     organizationId: string;
   }): Promise<IUser> {
     const user = new User(userData);

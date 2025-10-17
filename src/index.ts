@@ -18,7 +18,8 @@ const swaggerOptions = {
     info: {
       title: 'Decatron Business Backend API',
       version: '1.0.0',
-      description: 'API for Decatron Business Backend - Multi-tenancy authentication and user management',
+      description:
+        'API for Decatron Business Backend - Multi-tenancy authentication and user management',
     },
     servers: [
       {

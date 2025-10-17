@@ -465,7 +465,12 @@ router.put('/update-user-profile', authenticateToken, AuthController.updateUserP
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.put('/update-organization-profile', authenticateToken, requireRole(['organization']), AuthController.updateOrganizationProfile);
+router.put(
+  '/update-organization-profile',
+  authenticateToken,
+  requireRole(['organization']),
+  AuthController.updateOrganizationProfile
+);
 
 /**
  * @swagger
@@ -523,7 +528,12 @@ router.put('/update-organization-profile', authenticateToken, requireRole(['orga
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post('/generate-invite', authenticateToken, requireRole(['organization']), AuthController.generateInvite);
+router.post(
+  '/generate-invite',
+  authenticateToken,
+  requireRole(['organization']),
+  AuthController.generateInvite
+);
 
 /**
  * @swagger

@@ -106,14 +106,11 @@ export class AuthService {
     return user;
   }
 
-  static async updateOrganizationProfile(organizationId: string, profile: any) {
+  static async getOrganization(organizationId: string) {
     const organization = await OrganizationModel.findById(organizationId);
     if (!organization) {
       throw new Error('Organization not found');
     }
-
-    organization.profile = { ...organization.profile, ...profile };
-    await organization.save();
     return organization;
   }
 
@@ -138,11 +135,7 @@ export class AuthService {
     return token;
   }
 
-  static async registerUserViaInvite(data: {
-    token: string;
-    username: string;
-    password: string;
-  }) {
+  static async registerUserViaInvite(data: { token: string; username: string; password: string }) {
     const decoded = JWTUtils.verify(data.token);
     if (!decoded || decoded.type !== 'invite') {
       throw new Error('Invalid or expired invite link');

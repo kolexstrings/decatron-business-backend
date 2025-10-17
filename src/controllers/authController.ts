@@ -65,7 +65,7 @@ export class AuthController {
     }
   }
 
-  static async addUser(req: Request, res: Response) {
+  static async addUser(req: AuthRequest, res: Response) {
     try {
       const { username, email, password, role } = req.body;
 
@@ -95,7 +95,7 @@ export class AuthController {
     }
   }
 
-  static async getUsers(req: Request, res: Response) {
+  static async getUsers(req: AuthRequest, res: Response) {
     try {
       const users = await AuthService.getUsers(req.user!.organizationId!);
       res.json({ users });
@@ -133,7 +133,10 @@ export class AuthController {
     try {
       const { profile } = req.body;
       const user = await AuthService.updateUserProfile(req.user!.userId, profile);
-      res.json({ message: 'Profile updated successfully', user: { id: user.id, profile: user.profile } });
+      res.json({
+        message: 'Profile updated successfully',
+        user: { id: user.id, profile: user.profile },
+      });
     } catch (error: any) {
       res.status(404).json({ error: error.message });
     }
@@ -142,8 +145,14 @@ export class AuthController {
   static async updateOrganizationProfile(req: AuthRequest, res: Response) {
     try {
       const { profile } = req.body;
-      const organization = await AuthService.updateOrganizationProfile(req.user!.organizationId!, profile);
-      res.json({ message: 'Profile updated successfully', organization: { id: organization.id, profile: organization.profile } });
+      const organization = await AuthService.updateOrganizationProfile(
+        req.user!.organizationId!,
+        profile
+      );
+      res.json({
+        message: 'Profile updated successfully',
+        organization: { id: organization.id, profile: organization.profile },
+      });
     } catch (error: any) {
       res.status(404).json({ error: error.message });
     }
