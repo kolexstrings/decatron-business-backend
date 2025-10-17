@@ -1,5 +1,6 @@
 import bcrypt from 'bcrypt';
 import { OrganizationModel, UserModel } from '../models/User';
+import { AvailabilityModel, IAvailability, IDaySchedule } from '../models/Availability';
 import { JWTUtils } from '../utils/jwt';
 import { OtpUtils } from '../utils/otp';
 import { EmailUtils } from '../utils/email';
@@ -106,6 +107,18 @@ export class AuthService {
     return user;
   }
 
+
+  static async updateOrganizationProfile(organizationId: string, profile: any) {
+    const organization = await OrganizationModel.findById(organizationId);
+    if (!organization) {
+      throw new Error('Organization not found');
+    }
+
+    organization.profile = { ...organization.profile, ...profile };
+    await organization.save();
+    return organization;
+  }
+
   static async getOrganization(organizationId: string) {
     const organization = await OrganizationModel.findById(organizationId);
     if (!organization) {
@@ -165,5 +178,131 @@ export class AuthService {
 
   static async verifyOtp(email: string, otp: string, purpose: 'registration' | 'invite') {
     return await OtpUtils.verifyOtp(email, otp, purpose);
+  }
+
+  // Availability management methods
+  static async createAvailability(data: {
+    organizationId: string;
+    name: string;
+    description?: string;
+    isActive?: boolean;
+    monday?: { isAvailable: boolean; timeSlots: Array<{ startTime: string; endTime: string }> };
+    tuesday?: { isAvailable: boolean; timeSlots: Array<{ startTime: string; endTime: string }> };
+    wednesday?: { isAvailable: boolean; timeSlots: Array<{ startTime: string; endTime: string }> };
+    thursday?: { isAvailable: boolean; timeSlots: Array<{ startTime: string; endTime: string }> };
+    friday?: { isAvailable: boolean; timeSlots: Array<{ startTime: string; endTime: string }> };
+    saturday?: { isAvailable: boolean; timeSlots: Array<{ startTime: string; endTime: string }> };
+    sunday?: { isAvailable: boolean; timeSlots: Array<{ startTime: string; endTime: string }> };
+    timeSlotDuration?: number;
+    bufferTime?: number;
+  }) {
+    // Set default values for optional fields and day schedules
+    const availabilityData = {
+      isActive: true,
+      timeSlotDuration: 60,
+      bufferTime: 0,
+      monday: { isAvailable: false, timeSlots: [] },
+      tuesday: { isAvailable: false, timeSlots: [] },
+      wednesday: { isAvailable: false, timeSlots: [] },
+      thursday: { isAvailable: false, timeSlots: [] },
+      friday: { isAvailable: false, timeSlots: [] },
+      saturday: { isAvailable: false, timeSlots: [] },
+      sunday: { isAvailable: false, timeSlots: [] },
+      ...data
+    };
+
+    const availability = await AvailabilityModel.create(availabilityData);
+    return availability;
+  }
+
+  static async getOrganizationAvailabilities(organizationId: string) {
+    return await AvailabilityModel.findByOrganization(organizationId);
+  }
+
+  static async getAvailabilityById(availabilityId: string, organizationId: string) {
+    const availability = await AvailabilityModel.findByIdAndOrganization(availabilityId, organizationId);
+    if (!availability) {
+      throw new Error('Availability not found');
+    }
+    return availability;
+  }
+
+  static async updateAvailability(availabilityId: string, organizationId: string, updateData: any): Promise<IAvailability> {
+    const availability = await AvailabilityModel.findByIdAndOrganization(availabilityId, organizationId);
+    if (!availability) {
+      throw new Error('Availability not found');
+    }
+
+    const updatedAvailability = await AvailabilityModel.updateById(availabilityId, updateData);
+    if (!updatedAvailability) {
+      throw new Error('Failed to update availability');
+    }
+    return updatedAvailability;
+  }
+
+  static async deleteAvailability(availabilityId: string, organizationId: string) {
+    const availability = await AvailabilityModel.findByIdAndOrganization(availabilityId, organizationId);
+    if (!availability) {
+      throw new Error('Availability not found');
+    }
+
+    await AvailabilityModel.deleteById(availabilityId);
+    return { success: true, message: 'Availability deleted successfully' };
+  }
+
+  static async getAvailableTimeSlots(availabilityId: string, organizationId: string, date: Date) {
+    const availability = await AvailabilityModel.findByIdAndOrganization(availabilityId, organizationId);
+    if (!availability) {
+      throw new Error('Availability not found');
+    }
+
+    // Get day of week (0 = Sunday, 1 = Monday, etc.)
+    const dayOfWeek = date.getDay();
+    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const dayName = dayNames[dayOfWeek];
+
+    const daySchedule = (availability as any)[dayName] as IDaySchedule;
+
+    if (!daySchedule.isAvailable || daySchedule.timeSlots.length === 0) {
+      return [];
+    }
+
+    const timeSlots = [];
+
+    for (const slot of daySchedule.timeSlots) {
+      const startTime = this.parseTimeToMinutes(slot.startTime);
+      const endTime = this.parseTimeToMinutes(slot.endTime);
+      const slotDuration = availability.timeSlotDuration || 60;
+      const bufferTime = availability.bufferTime || 0;
+
+      let currentTime = startTime;
+
+      while (currentTime + slotDuration <= endTime) {
+        const slotStartTime = this.formatMinutesToTime(currentTime);
+        const slotEndTime = this.formatMinutesToTime(currentTime + slotDuration);
+
+        timeSlots.push({
+          startTime: slotStartTime,
+          endTime: slotEndTime,
+          date: date.toISOString().split('T')[0] // YYYY-MM-DD format
+        });
+
+        currentTime += slotDuration + bufferTime;
+      }
+    }
+
+    return timeSlots;
+  }
+
+  // Helper methods for time calculations
+  private static parseTimeToMinutes(timeString: string): number {
+    const [hours, minutes] = timeString.split(':').map(Number);
+    return hours * 60 + minutes;
+  }
+
+  private static formatMinutesToTime(minutes: number): string {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
   }
 }

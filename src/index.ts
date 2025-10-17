@@ -5,6 +5,7 @@ import swaggerJsdoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
 import { connectDB } from './utils/db';
 import authRoutes from './routes/auth';
+import availabilityRoutes from './routes/availability';
 
 dotenv.config();
 
@@ -64,6 +65,9 @@ app.get('/api-docs.json', (req: Request, res: Response) => {
 
 // Auth routes
 app.use('/auth', authRoutes);
+
+// Availability routes
+app.use('/availability', availabilityRoutes);
 
 // Protected route example
 app.get('/protected', (req: Request, res: Response) => {
