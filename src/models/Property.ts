@@ -1,5 +1,18 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
+// Import geocoding service (will be created)
+import { GeocodingService, GeocodingResult, GeocodingError } from '../services/geocodingService';
+
+// Type guard function to check if result is GeocodingResult
+function isGeocodingResult(result: GeocodingResult | GeocodingError): result is GeocodingResult {
+  return 'latitude' in result && 'longitude' in result && !('error' in result);
+}
+
+// Type guard function to check if result is GeocodingError
+function isGeocodingError(result: GeocodingResult | GeocodingError): result is GeocodingError {
+  return 'error' in result;
+}
+
 export type PaymentPlanType = 'outright' | 'installment' | 'mortgage' | 'rent_to_own';
 export type SaleType = 'House' | 'Apartment' | 'Land';
 export type PropertyStatus = 'Available' | 'Sold' | 'Under Construction';
@@ -155,7 +168,42 @@ const PropertySchema: Schema = new Schema(
   }
 );
 
-// Index for efficient queries
+// Pre-save hook to geocode addresses
+PropertySchema.pre('save', async function (next) {
+  try {
+    // Cast 'this' to IProperty to access typed properties
+    const property = this.toObject() as unknown as IProperty;
+
+    // Only geocode if latitude/longitude are not already set
+    if (!property.location.latitude || !property.location.longitude) {
+      const geocodingResult = await GeocodingService.geocodeAddress(
+        property.location.address,
+        property.location.city,
+        property.location.state
+      );
+
+      // Handle successful geocoding result
+      if (geocodingResult && typeof geocodingResult === 'object' && 'latitude' in geocodingResult && 'longitude' in geocodingResult) {
+        // @ts-ignore - TypeScript can't properly infer the discriminated union type
+        this.location.latitude = geocodingResult.latitude;
+        // @ts-ignore - TypeScript can't properly infer the discriminated union type
+        this.location.longitude = geocodingResult.longitude;
+      }
+      // Handle geocoding error
+      else if (geocodingResult && typeof geocodingResult === 'object' && 'error' in geocodingResult) {
+        // @ts-ignore - TypeScript can't properly infer the discriminated union type
+        console.warn(`Geocoding failed for property ${property.title}:`, geocodingResult.message || 'Unknown error');
+      }
+    }
+
+    next();
+  } catch (error) {
+    console.error('Error in property geocoding pre-save hook:', error);
+    next(error as Error);
+  }
+});
+
+// Indexes for efficient queries
 PropertySchema.index({ organizationId: 1, status: 1 });
 PropertySchema.index({ 'location.city': 1, 'location.state': 1 });
 PropertySchema.index({ sale_type: 1, price: 1 });

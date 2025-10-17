@@ -40,7 +40,7 @@ export interface IBooking extends Document {
   processingAttempts: number;
 
   // Booking metadata
-  source: 'web' | 'mobile' | 'phone' | 'walk_in';
+  source: 'web' | 'whatsapp' | 'walk_in' | 'proxy';
   priority: 'normal' | 'urgent' | 'vip';
 
   createdAt: Date;
@@ -93,7 +93,7 @@ const BookingSchema: Schema = new Schema(
     // Booking metadata
     source: {
       type: String,
-      enum: ['web', 'mobile', 'phone', 'walk_in'],
+      enum: ['web', 'whatsapp', 'walk_in', 'proxy'],
       default: 'web',
     },
     priority: {

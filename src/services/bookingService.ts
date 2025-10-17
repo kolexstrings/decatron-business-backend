@@ -16,7 +16,7 @@ export interface CreateBookingRequest {
     endTime: string;
   };
   clientId?: string;
-  source?: 'web' | 'mobile' | 'phone' | 'walk_in';
+  source?: 'web' | 'whatsapp' | 'walk_in' | 'proxy';
   priority?: 'normal' | 'urgent' | 'vip';
   duration?: number; // Default 60 minutes
 }
@@ -116,7 +116,8 @@ export class BookingService {
         startTime: bookingRequest.preferredTimeSlot.startTime,
         endTime: bookingRequest.preferredTimeSlot.endTime,
         duration: bookingRequest.duration || 60,
-        status: 'scheduled',
+        status: 'assigned', // Start as assigned, requires acceptance
+        assignmentStatus: 'pending', // Staff needs to accept
         staffPreviousInspection: bestStaff.previousInspection
       });
 
@@ -324,7 +325,8 @@ export class BookingService {
           inspection.startTime = newTimeSlot.startTime;
           inspection.endTime = newTimeSlot.endTime;
           inspection.duration = newDuration || 60;
-          inspection.status = 'scheduled';
+          inspection.status = 'assigned'; // Reset to assigned, requires re-acceptance
+          inspection.assignmentStatus = 'pending'; // Staff needs to re-accept
           await inspection.save({ session });
         }
       } else {
@@ -349,7 +351,8 @@ export class BookingService {
           startTime: newTimeSlot.startTime,
           endTime: newTimeSlot.endTime,
           duration: newDuration || 60,
-          status: 'scheduled',
+          status: 'assigned', // Start as assigned, requires acceptance
+          assignmentStatus: 'pending', // Staff needs to accept
           staffPreviousInspection: bestStaff.previousInspection
         });
 

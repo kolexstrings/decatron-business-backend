@@ -147,7 +147,7 @@ export class IntelligentStaffAssignmentService {
   /**
    * Check if a specific staff member is available for a time slot
    */
-  private static async checkStaffAvailability(
+  static async checkStaffAvailability(
     staffSchedule: IStaffSchedule,
     scheduledDate: Date,
     startTime: string,

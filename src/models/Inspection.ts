@@ -1,6 +1,6 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
-export type InspectionStatus = 'scheduled' | 'in_progress' | 'completed' | 'cancelled' | 'no_show';
+export type InspectionStatus = 'assigned' | 'scheduled' | 'in_progress' | 'completed' | 'cancelled' | 'no_show';
 
 export interface IInspection extends Document {
   organizationId: string;
@@ -25,6 +25,12 @@ export interface IInspection extends Document {
   // Staff Assignment
   assignedStaffId: mongoose.Types.ObjectId;
   assignedStaffName: string;
+
+  // Assignment Status Tracking
+  assignmentStatus: 'pending' | 'accepted' | 'rejected';
+  assignmentResponseAt?: Date;
+  assignmentResponseBy?: mongoose.Types.ObjectId; // Staff who responded
+  rejectionReason?: string;
 
   // Timing
   scheduledDate: Date;
@@ -73,6 +79,17 @@ const InspectionSchema: Schema = new Schema(
     assignedStaffId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     assignedStaffName: { type: String, required: true },
 
+    // Assignment Status Tracking
+    assignmentStatus: {
+      type: String,
+      enum: ['pending', 'accepted', 'rejected'],
+      default: 'pending',
+      required: true
+    },
+    assignmentResponseAt: { type: Date },
+    assignmentResponseBy: { type: Schema.Types.ObjectId, ref: 'User' },
+    rejectionReason: { type: String },
+
     // Timing
     scheduledDate: { type: Date, required: true },
     startTime: { type: String, required: true }, // Format: "HH:mm"
@@ -82,8 +99,8 @@ const InspectionSchema: Schema = new Schema(
     // Status and Notes
     status: {
       type: String,
-      enum: ['scheduled', 'in_progress', 'completed', 'cancelled', 'no_show'],
-      default: 'scheduled',
+      enum: ['assigned', 'scheduled', 'in_progress', 'completed', 'cancelled', 'no_show'],
+      default: 'assigned',
     },
     notes: { type: String },
     cancellationReason: { type: String },

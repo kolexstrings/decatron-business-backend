@@ -53,7 +53,7 @@ router.use(authenticateToken);
  *                 type: string
  *               source:
  *                 type: string
- *                 enum: [web, mobile, phone, walk_in]
+ *                 enum: [web, whatsapp, walk_in, proxy]
  *               priority:
  *                 type: string
  *                 enum: [normal, urgent, vip]
