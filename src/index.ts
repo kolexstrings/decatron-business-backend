@@ -12,6 +12,8 @@ import propertyRoutes from './routes/properties';
 import bookingRoutes from './routes/bookings';
 import inspectionRoutes from './routes/inspections';
 import proxyBookingRoutes from './routes/proxyBookings';
+import feedbackRoutes from './routes/feedback';
+import analyticsRoutes from './routes/analytics';
 
 // Load environment variables
 dotenv.config();
@@ -93,6 +95,12 @@ app.use('/inspections', inspectionRoutes);
 
 // Proxy booking routes (staff/admin booking on behalf of clients)
 app.use('/proxy-bookings', proxyBookingRoutes);
+
+// Feedback routes (staff feedback and client reviews)
+app.use('/feedback', feedbackRoutes);
+
+// Analytics routes (business insights and performance metrics)
+app.use('/analytics', analyticsRoutes);
 
 // Protected route example
 app.get('/protected', (req: Request, res: Response) => {
