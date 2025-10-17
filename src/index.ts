@@ -4,13 +4,20 @@ import dotenv from 'dotenv';
 import swaggerJsdoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
 import { connectDB } from './utils/db';
+import staffScheduleRoutes from './routes/staffSchedules';
+
 import authRoutes from './routes/auth';
 import availabilityRoutes from './routes/availability';
 import propertyRoutes from './routes/properties';
+import bookingRoutes from './routes/bookings';
 
+// Load environment variables
 dotenv.config();
 
+// Create Express app
 const app = express();
+
+// Get port from environment or use default
 const PORT = process.env.PORT || 3000;
 
 // Swagger configuration
@@ -44,7 +51,7 @@ const swaggerOptions = {
       },
     ],
   },
-  apis: ['./src/routes/*.ts', './src/controllers/*.ts'], // Paths to files containing OpenAPI definitions
+  apis: ['**/*.ts'], // Paths to files containing OpenAPI definitions
 };
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
@@ -72,6 +79,12 @@ app.use('/availability', availabilityRoutes);
 
 // Property routes
 app.use('/properties', propertyRoutes);
+
+// Booking routes
+app.use('/bookings', bookingRoutes);
+
+// Staff schedule routes
+app.use('/staff-schedules', staffScheduleRoutes);
 
 // Protected route example
 app.get('/protected', (req: Request, res: Response) => {

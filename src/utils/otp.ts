@@ -5,8 +5,7 @@ export const OtpUtils = {
   async generateOtp(email: string, purpose: 'registration' | 'invite'): Promise<string> {
     const otp = otpGenerator.generate(6, {
       digits: true,
-      alphabets: false,
-      upperCase: false,
+      upperCaseAlphabets: false,
       specialChars: false,
     });
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
