@@ -177,7 +177,7 @@ export class AuthController {
         organizationId: req.user!.organizationId!,
       });
 
-      const inviteLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/invite?token=${token}`;
+      const inviteLink = `${process.env.FRONTEND_URL || 'http://localhost:8080'}/invite?token=${token}`;
 
       if (req.body.sendEmail) {
         await EmailUtils.sendInvite(email, inviteLink, organization.name);

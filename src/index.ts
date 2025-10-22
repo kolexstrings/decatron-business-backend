@@ -22,7 +22,7 @@ dotenv.config();
 const app = express();
 
 // Get port from environment or use default
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
 
 // Swagger configuration
 const swaggerOptions = {
