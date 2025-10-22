@@ -43,16 +43,40 @@ export interface IInspection extends Document {
   notes?: string;
   cancellationReason?: string;
 
-  // Location proximity data for intelligent assignment
-  staffPreviousInspection?: {
-    propertyId: mongoose.Types.ObjectId;
-    endTime: Date;
-    distance?: number; // Distance to current property in km
+  // Location tracking during inspection
+  locationTracking: {
+    isEnabled: boolean;
+    startTime?: Date;
+    endTime?: Date;
+    totalDistance?: number; // Total distance traveled in km
+    averageSpeed?: number; // Average speed in km/h
   };
 
   createdAt: Date;
   updatedAt: Date;
 }
+
+const PropertyLocationSchema = new Schema(
+  {
+    address: { type: String, required: true },
+    city: { type: String, required: true },
+    state: { type: String, required: true },
+    latitude: { type: Number },
+    longitude: { type: Number },
+  },
+  { _id: false }
+);
+
+const LocationTrackingSchema = new Schema(
+  {
+    isEnabled: { type: Boolean, default: false },
+    startTime: { type: Date },
+    endTime: { type: Date },
+    totalDistance: { type: Number, min: 0 },
+    averageSpeed: { type: Number, min: 0 },
+  },
+  { _id: false }
+);
 
 const InspectionSchema: Schema = new Schema(
   {
@@ -61,13 +85,7 @@ const InspectionSchema: Schema = new Schema(
     // Property Information
     propertyId: { type: Schema.Types.ObjectId, ref: 'Property', required: true },
     propertyTitle: { type: String, required: true },
-    propertyLocation: {
-      address: { type: String, required: true },
-      city: { type: String, required: true },
-      state: { type: String, required: true },
-      latitude: { type: Number },
-      longitude: { type: Number },
-    },
+    propertyLocation: PropertyLocationSchema,
 
     // Client Information
     clientId: { type: Schema.Types.ObjectId, ref: 'User' },
@@ -105,12 +123,8 @@ const InspectionSchema: Schema = new Schema(
     notes: { type: String },
     cancellationReason: { type: String },
 
-    // Location proximity data for intelligent assignment
-    staffPreviousInspection: {
-      propertyId: { type: Schema.Types.ObjectId, ref: 'Property' },
-      endTime: { type: Date },
-      distance: { type: Number }, // Distance in km
-    },
+    // Location tracking during inspection
+    locationTracking: LocationTrackingSchema,
   },
   {
     timestamps: true,

@@ -420,4 +420,198 @@ export class InspectionController {
       });
     }
   }
+
+  /**
+   * Staff starts an inspection (with optional location tracking)
+   * PUT /api/inspections/:inspectionId/start
+   */
+  static async startInspection(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { inspectionId } = req.params;
+      const { enableLocationTracking = false, startingLocation } = req.body;
+      const staffId = req.user?.userId;
+
+      if (!staffId) {
+        res.status(401).json({
+          success: false,
+          message: 'Staff ID not found in token'
+        });
+        return;
+      }
+
+      const inspection = await Inspection.findOne({
+        _id: inspectionId,
+        assignedStaffId: staffId,
+        status: 'scheduled',
+        assignmentStatus: 'accepted'
+      });
+
+      if (!inspection) {
+        res.status(404).json({
+          success: false,
+          message: 'Inspection not found or not ready to start'
+        });
+        return;
+      }
+
+      // Update inspection status to in progress
+      inspection.status = 'in_progress';
+
+      // Enable location tracking if requested
+      if (enableLocationTracking) {
+        (inspection.locationTracking as any).isEnabled = true;
+        (inspection.locationTracking as any).startTime = new Date();
+
+        // If starting location is provided, create initial location update
+        if (startingLocation && startingLocation.latitude && startingLocation.longitude) {
+          const { LocationUpdate } = await import('../models/LocationUpdate');
+          await LocationUpdate.create({
+            inspectionId,
+            userId: staffId,
+            userType: 'staff',
+            organizationId: req.user?.organizationId,
+            latitude: startingLocation.latitude,
+            longitude: startingLocation.longitude,
+            accuracy: startingLocation.accuracy,
+            status: 'traveling_to_property',
+            timestamp: new Date(),
+            isRealTime: true
+          });
+        }
+      }
+
+      await inspection.save();
+
+      res.status(200).json({
+        success: true,
+        message: 'Inspection started successfully',
+        data: {
+          inspectionId: inspection._id,
+          status: inspection.status,
+          locationTracking: {
+            enabled: inspection.locationTracking.isEnabled,
+            startTime: inspection.locationTracking.startTime
+          }
+        }
+      });
+
+    } catch (error) {
+      console.error('Error starting inspection:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error'
+      });
+    }
+  }
+
+  /**
+   * Staff completes an inspection
+   * PUT /api/inspections/:inspectionId/complete
+   */
+  static async completeInspection(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { inspectionId } = req.params;
+      const { duration, outcome, notes, recommendations, finalLocation } = req.body;
+      const staffId = req.user?.userId;
+
+      if (!staffId) {
+        res.status(401).json({
+          success: false,
+          message: 'Staff ID not found in token'
+        });
+        return;
+      }
+
+      const inspection = await Inspection.findOne({
+        _id: inspectionId,
+        assignedStaffId: staffId,
+        status: 'in_progress'
+      });
+
+      if (!inspection) {
+        res.status(404).json({
+          success: false,
+          message: 'Inspection not found or not in progress'
+        });
+        return;
+      }
+
+      // Update inspection status to completed
+      inspection.status = 'completed';
+      inspection.notes = notes || inspection.notes;
+
+      // Complete location tracking if enabled
+      if (inspection.locationTracking.isEnabled) {
+        (inspection.locationTracking as any).endTime = new Date();
+
+        // Calculate total distance and average speed from location updates
+        const { LocationUpdate } = await import('../models/LocationUpdate');
+        const locationUpdates = await LocationUpdate.find({ inspectionId, userType: 'staff' })
+          .sort({ timestamp: 1 });
+
+        if (locationUpdates.length > 1) {
+          let totalDistance = 0;
+          let totalTime = 0;
+
+          for (let i = 1; i < locationUpdates.length; i++) {
+            const prev = locationUpdates[i - 1];
+            const current = locationUpdates[i];
+
+            const distance = Math.sqrt(
+              Math.pow(current.latitude - prev.latitude, 2) +
+              Math.pow(current.longitude - prev.longitude, 2)
+            ) * 111; // Rough conversion from degrees to km
+
+            totalDistance += distance;
+
+            const timeDiff = (current.timestamp.getTime() - prev.timestamp.getTime()) / (1000 * 60 * 60); // hours
+            if (timeDiff > 0) {
+              totalTime += timeDiff;
+            }
+          }
+
+          inspection.locationTracking.totalDistance = totalDistance;
+          inspection.locationTracking.averageSpeed = totalTime > 0 ? totalDistance / totalTime : 0;
+        }
+
+        // Create final location update if provided
+        if (finalLocation && finalLocation.latitude && finalLocation.longitude) {
+          await LocationUpdate.create({
+            inspectionId,
+            userId: staffId,
+            userType: 'staff',
+            organizationId: req.user?.organizationId,
+            latitude: finalLocation.latitude,
+            longitude: finalLocation.longitude,
+            accuracy: finalLocation.accuracy,
+            status: 'completed',
+            notes: `Inspection completed. Outcome: ${outcome}`,
+            timestamp: new Date(),
+            isRealTime: true
+          });
+        }
+      }
+
+      await inspection.save();
+
+      res.status(200).json({
+        success: true,
+        message: 'Inspection completed successfully',
+        data: {
+          inspectionId: inspection._id,
+          status: inspection.status,
+          duration: duration,
+          outcome: outcome,
+          locationTracking: inspection.locationTracking
+        }
+      });
+
+    } catch (error) {
+      console.error('Error completing inspection:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error'
+      });
+    }
+  }
 }

@@ -162,11 +162,97 @@ router.use(authenticateToken);
  *         description: Inspection not found
  */
 
+/**
+ * @swagger
+ * /api/inspections/{inspectionId}/start:
+ *   put:
+ *     summary: Staff starts an inspection with optional location tracking
+ *     tags: [Inspections]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: inspectionId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               enableLocationTracking:
+ *                 type: boolean
+ *               startingLocation:
+ *                 type: object
+ *                 properties:
+ *                   latitude:
+ *                     type: number
+ *                   longitude:
+ *                     type: number
+ *                   accuracy:
+ *                     type: number
+ *     responses:
+ *       200:
+ *         description: Inspection started successfully
+ *       404:
+ *         description: Inspection not found or not ready to start
+ */
+
+/**
+ * @swagger
+ * /api/inspections/{inspectionId}/complete:
+ *   put:
+ *     summary: Staff completes an inspection
+ *     tags: [Inspections]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: inspectionId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               duration:
+ *                 type: number
+ *               outcome:
+ *                 type: string
+ *               notes:
+ *                 type: string
+ *               recommendations:
+ *                 type: string
+ *               finalLocation:
+ *                 type: object
+ *                 properties:
+ *                   latitude:
+ *                     type: number
+ *                   longitude:
+ *                     type: number
+ *                   accuracy:
+ *                     type: number
+ *     responses:
+ *       200:
+ *         description: Inspection completed successfully
+ *       404:
+ *         description: Inspection not found or not in progress
+ */
+
 // Staff actions on their own inspections
 router.get('/:inspectionId', InspectionController.getInspection);
 router.get('/staff/pending', InspectionController.getPendingInspections);
 router.put('/:inspectionId/accept', InspectionController.acceptInspection);
 router.put('/:inspectionId/reject', InspectionController.rejectInspection);
+router.put('/:inspectionId/start', InspectionController.startInspection);
+router.put('/:inspectionId/complete', InspectionController.completeInspection);
 
 // Admin reassignment actions
 router.put('/:inspectionId/reassign', InspectionController.reassignInspection);

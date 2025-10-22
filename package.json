@@ -37,6 +37,7 @@
     "@types/cors": "^2.8.19",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/nodemailer": "^7.0.2",
+    "@types/socket.io": "^3.0.5",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
@@ -44,6 +45,7 @@
     "mongoose": "^8.19.1",
     "nodemailer": "^7.0.9",
     "otp-generator": "^4.0.1",
+    "socket.io": "^4.7.5",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1"
   }
